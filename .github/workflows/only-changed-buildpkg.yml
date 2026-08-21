@@ -1,4 +1,4 @@
-name: Build Packages
+name: Build Modified PKGBUILD's only
 on:
   push:
     paths:
