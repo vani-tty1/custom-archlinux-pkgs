@@ -1,7 +1,7 @@
 # Maintainer: vani-tty1 <giovannirafanan609@gmail.com>
 pkgname=memerist
 pkgver=2.0.0
-pkgrel=1
+pkgrel=2
 pkgdesc="A simple meme editor for Linux"
 arch=('x86_64' 'aarch64')
 url="https://github.com/vani-tty1/memerist"
