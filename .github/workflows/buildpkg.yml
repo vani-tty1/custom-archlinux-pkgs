@@ -46,7 +46,7 @@ jobs:
       - name: Import PGP keys required by this PKGBUILD
         run: su builder -c "cd '$GITHUB_WORKSPACE' && ./import-pgp-keys.sh"
       - name: Build ${{ matrix.pkg }}
-        run: su builder -c "cd '$GITHUB_WORKSPACE/${{ matrix.pkg }}' && makepkg -sf --noconfirm --needed"
+        run: su builder -c "cd '$GITHUB_WORKSPACE/${{ matrix.pkg }}' && makepkg -sfrc --noconfirm --needed"
       - name: Upload ${{ matrix.pkg }} build
         if: always()
         uses: actions/upload-artifact@v7

@@ -1,0 +1,41 @@
+# Maintainer: vani-tty1 <giovannirafanan609@gmail.com>
+pkgname=memerist
+pkgver=2.0.0
+pkgrel=1
+pkgdesc="A simple meme editor for Linux"
+arch=('x86_64' 'aarch64')
+url="https://github.com/vani-tty1/memerist"
+license=('GPL-3.0-or-later')
+depends=(
+  'glib2'
+  'gtk4'
+  'imagemagick'
+  'libadwaita'
+  'libepoxy'
+  'libjpeg-turbo'
+  'libpng'
+)
+makedepends=(
+  'blueprint-compiler'
+  'meson'
+  'ninja'
+)
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
+sha256sums=('3bae51afa69a44973479f4340f0e6a52a0828f3d2c1ac4e9d797e018b9205112')
+
+build() {
+  cd "${pkgname%}-${pkgver}"
+  arch-meson build
+  meson compile -C build
+}
+
+check() {
+  cd "${pkgname%}-${pkgver}"
+  meson test -C build --print-errorlogs
+}
+
+
+package() {
+  cd "${pkgname%}-${pkgver}"
+  meson install -C build --destdir="${pkgdir}"
+}
