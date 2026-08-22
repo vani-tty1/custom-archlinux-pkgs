@@ -27,8 +27,7 @@ optdepends=(
     'libdbusmenu-glib: For KDE global menu'
 )
 makedepends=(
-    'nvm'
-    'gulp'
+    'curl'
     'yarn'
     'jq'
     'libxdmcp'
@@ -82,31 +81,39 @@ case "$CARCH" in
 esac
 
 build() {
-    # Deactivate any pre-loaded nvm, and make sure we use our own in the current source directory
-    command -v nvm >/dev/null && nvm deactivate && nvm unload
-    export NVM_DIR="${srcdir}/.nvm"
-    source /usr/share/nvm/init-nvm.sh || [[ $? != 1 ]]
-
-    # Install the correct version of NodeJS (read from .nvmrc)
-    nvm install $(cat .nvmrc)
-    nvm use
-
-    # Check if the correct version of node is being used
+    # Install the exact NodeJS version pinned in .nvmrc directly from upstream
+    # tarballs. This avoids depending on the AUR-only 'nvm' package entirely —
+    # same pinned-version guarantee, but reproducible with only official repos.
     nvmrc_version="$(cat .nvmrc)"
-    if [[ "$nvmrc_version" != "v"* ]]
-    then
-        # Add the v prefix, because it seems to be missing in .nvmrc
-        echo "Configured .nvmrc version is [$nvmrc_version], adding the v prefix before checking if it matches with the node command."
-        nvmrc_version="v$nvmrc_version"
+    nvmrc_version="${nvmrc_version#v}"   # strip a leading 'v' if present
+
+    case "$CARCH" in
+        x86_64)  _node_arch=x64    ;;
+        aarch64) _node_arch=arm64  ;;
+        armv7h)  _node_arch=armv7l ;;
+        *)       echo "Unsupported CARCH for Node.js download: $CARCH"; exit 1 ;;
+    esac
+
+    _node_pkg="node-v${nvmrc_version}-linux-${_node_arch}"
+    _node_dir="${srcdir}/${_node_pkg}"
+
+    if [ ! -d "${_node_dir}" ]; then
+        curl -fLO "https://nodejs.org/dist/v${nvmrc_version}/${_node_pkg}.tar.xz"
+        tar -xf "${_node_pkg}.tar.xz" -C "${srcdir}"
     fi
 
-    # Now check if the version matches exactly, or at least starts with the same prefix
-    if [[ "$(node --version)" != "$nvmrc_version"* ]]
+    export PATH="${_node_dir}/bin:${PATH}"
+
+    # Verify the version actually matches what we asked for
+    if [[ "$(node --version)" != "v${nvmrc_version}" ]]
     then
-    	echo "Using the wrong version of NodeJS! Expected ["$nvmrc_version"] but using ["$(node --version)"]."
+    	echo "Using the wrong version of NodeJS! Expected [v${nvmrc_version}] but using [$(node --version)]."
     	exit 1
     fi
-    echo "Installed version of node ["$(node --version)"] matches required version ["$nvmrc_version"], continuing."
+    echo "Installed version of node [$(node --version)] matches required version [v${nvmrc_version}], continuing."
+
+    # gulp is a project-local devDependency invoked via `npm run gulp` inside
+    # build.sh (pulled in by `yarn install`) — no global gulp package is needed.
 
     rustup default stable
 
