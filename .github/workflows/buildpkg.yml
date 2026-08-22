@@ -1,5 +1,8 @@
-name: Build Packages
+name: Build Package
 on:
+  push:
+    paths:
+      - '**/PKGBUILD'
   workflow_dispatch: {}
 
 jobs:
@@ -10,17 +13,38 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v7
-      - name: Find package folders
+        with:
+          fetch-depth: 0   # need history to diff against the previous commit
+
+      - name: Find changed package folders
         id: find
         run: |
-          pkgs=$(find . -maxdepth 2 -name PKGBUILD -printf '%h\n' \
+          if [ "${{ github.event_name }}" = "push" ]; then
+            BEFORE="${{ github.event.before }}"
+            AFTER="${{ github.event.after }}"
+          else
+            BEFORE="HEAD~1"
+            AFTER="HEAD"
+          fi
+
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE" ]; then
+            BEFORE=$(git rev-list --max-parents=0 HEAD)
+          fi
+
+          changed=$(git diff --name-only "$BEFORE" "$AFTER" -- '**/PKGBUILD' 'PKGBUILD')
+
+          pkgs=$(echo "$changed" \
+            | xargs -r -n1 dirname \
             | sed 's|^\./||' \
+            | sort -u \
             | jq -R -s -c 'split("\n")[:-1]')
+
           echo "packages=$pkgs" >> "$GITHUB_OUTPUT"
-          echo "Found: $pkgs"
+          echo "Changed PKGBUILD dirs: $pkgs"
 
   Build:
     needs: Discover
+    if: needs.Discover.outputs.packages != '[]'
     runs-on: ubuntu-26.04
     container: archlinux:latest
     strategy:
